@@ -9,7 +9,7 @@ using Microsoft.Extensions.Primitives;
 namespace Yarp.ReverseProxy.Transforms;
 
 /// <summary>
-/// Sets or appends the X-Forwarded-For header with the previous clients's IP address.
+/// Sets or appends the X-Forwarded-For header with the previous client's IP address.
 /// </summary>
 public class RequestHeaderXForwardedForTransform : RequestTransform
 {
@@ -42,7 +42,14 @@ public class RequestHeaderXForwardedForTransform : RequestTransform
             throw new ArgumentNullException(nameof(context));
         }
 
-        var remoteIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
+        string? remoteIp = null;
+        var remoteIpAddress = context.HttpContext.Connection.RemoteIpAddress;
+        if (remoteIpAddress is not null)
+        {
+            remoteIp = remoteIpAddress.IsIPv4MappedToIPv6 ?
+                remoteIpAddress.MapToIPv4().ToString() :
+                remoteIpAddress.ToString();
+        }
 
         switch (TransformAction)
         {

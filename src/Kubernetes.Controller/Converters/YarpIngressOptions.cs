@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System;
 using System.Collections.Generic;
 using Yarp.ReverseProxy.Configuration;
 
@@ -13,18 +14,23 @@ internal sealed class YarpIngressOptions
     public string AuthorizationPolicy { get; set; }
 #if NET7_0_OR_GREATER
     public string RateLimiterPolicy { get; set; }
+    public string OutputCachePolicy { get; set; }
 #endif
     public SessionAffinityConfig SessionAffinity { get; set; }
     public HttpClientConfig HttpClientConfig { get; set; }
     public string LoadBalancingPolicy { get; set; }
     public string CorsPolicy { get; set; }
+    public string TimeoutPolicy { get; set; }
+    public TimeSpan? Timeout { get; set; }
     public HealthCheckConfig HealthCheck { get; set; }
     public Dictionary<string, string> RouteMetadata { get; set; }
     public List<RouteHeader> RouteHeaders { get; set; }
+    public List<RouteQueryParameter> RouteQueryParameters { get; set; }
     public int? RouteOrder { get; set; }
+    public List<string> RouteMethods { get; set; }
 }
 
-internal sealed class RouteHeaderWapper
+internal sealed class RouteHeaderWrapper
 {
     public string Name { get; init; }
     public List<string> Values { get; init; }
@@ -34,6 +40,25 @@ internal sealed class RouteHeaderWapper
     public RouteHeader ToRouteHeader()
     {
         return new RouteHeader
+        {
+            Name = Name,
+            Values = Values,
+            Mode = Mode,
+            IsCaseSensitive = IsCaseSensitive
+        };
+    }
+}
+
+internal sealed class RouteQueryParameterWrapper
+{
+    public string Name { get; init; }
+    public List<string> Values { get; init; }
+    public QueryParameterMatchMode Mode { get; init; }
+    public bool IsCaseSensitive { get; init; }
+
+    public RouteQueryParameter ToRouteQueryParameter()
+    {
+        return new RouteQueryParameter
         {
             Name = Name,
             Values = Values,

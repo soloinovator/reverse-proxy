@@ -70,13 +70,13 @@ internal sealed class HeaderMatcherPolicy : MatcherPolicy, IEndpointComparerPoli
 
             foreach (var matcher in matchers)
             {
-                var headerExists = headers.TryGetValue(matcher.Name, out var requestHeaderValues);
+                headers.TryGetValue(matcher.Name, out var requestHeaderValues);
                 var valueIsEmpty = StringValues.IsNullOrEmpty(requestHeaderValues);
 
                 var matched = matcher.Mode switch
                 {
                     HeaderMatchMode.Exists => !valueIsEmpty,
-                    HeaderMatchMode.NotExists => !headerExists,
+                    HeaderMatchMode.NotExists => valueIsEmpty,
                     HeaderMatchMode.ExactHeader => !valueIsEmpty && TryMatchExactOrPrefix(matcher, requestHeaderValues),
                     HeaderMatchMode.HeaderPrefix => !valueIsEmpty && TryMatchExactOrPrefix(matcher, requestHeaderValues),
                     HeaderMatchMode.Contains => !valueIsEmpty && TryMatchContainsOrNotContains(matcher, requestHeaderValues),
@@ -186,7 +186,7 @@ internal sealed class HeaderMatcherPolicy : MatcherPolicy, IEndpointComparerPoli
         return matcher.Mode == HeaderMatchMode.NotContains;
     }
 
-    private class HeaderMetadataEndpointComparer : EndpointMetadataComparer<IHeaderMetadata>
+    private sealed class HeaderMetadataEndpointComparer : EndpointMetadataComparer<IHeaderMetadata>
     {
         protected override int CompareMetadata(IHeaderMetadata? x, IHeaderMetadata? y)
         {

@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Yarp.ReverseProxy.Utilities;
 
 namespace Yarp.ReverseProxy.Configuration;
@@ -51,6 +53,29 @@ public sealed record RouteConfig
     /// Set to "Default" or leave empty to use the global rate limits, if any.
     /// </summary>
     public string? RateLimiterPolicy { get; init; }
+
+    /// <summary>
+    /// The name of the OutputCachePolicy to apply to this route.
+    /// If not set then only the BasePolicy will apply.
+    /// </summary>
+    public string? OutputCachePolicy { get; init; }
+#endif
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// The name of the TimeoutPolicy to apply to this route.
+    /// Setting both Timeout and TimeoutPolicy is an error.
+    /// If not set then only the system default will apply.
+    /// Set to "Disable" to disable timeouts for this route.
+    /// Set to "Default" or leave empty to use the system defaults, if any.
+    /// </summary>
+    public string? TimeoutPolicy { get; init; }
+
+    /// <summary>
+    /// The Timeout to apply to this route. This overrides any system defaults.
+    /// Setting both Timeout and TimeoutPolicy is an error.
+    /// Timeout granularity is limited to milliseconds.
+    /// </summary>
+    public TimeSpan? Timeout { get; init; }
 #endif
     /// <summary>
     /// The name of the CorsPolicy to apply to this route.
@@ -63,6 +88,8 @@ public sealed record RouteConfig
     /// <summary>
     /// An optional override for how large request bodies can be in bytes. If set, this overrides the server's default (30MB) per request.
     /// Set to '-1' to disable the limit for this route.
+    /// Note that this limit applies only to the YARP forwarder middleware, it does not apply when reading the request body from a custom middleware registered via
+    /// <see cref="ReverseProxyIEndpointRouteBuilderExtensions.MapReverseProxy(IEndpointRouteBuilder, Action{IReverseProxyApplicationBuilder})"/>.
     /// </summary>
     public long? MaxRequestBodySize { get; init; }
 
@@ -89,6 +116,11 @@ public sealed record RouteConfig
             && string.Equals(AuthorizationPolicy, other.AuthorizationPolicy, StringComparison.OrdinalIgnoreCase)
 #if NET7_0_OR_GREATER
             && string.Equals(RateLimiterPolicy, other.RateLimiterPolicy, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(OutputCachePolicy, other.OutputCachePolicy, StringComparison.OrdinalIgnoreCase)
+#endif
+#if NET8_0_OR_GREATER
+            && string.Equals(TimeoutPolicy, other.TimeoutPolicy, StringComparison.OrdinalIgnoreCase)
+            && Timeout == other.Timeout
 #endif
             && string.Equals(CorsPolicy, other.CorsPolicy, StringComparison.OrdinalIgnoreCase)
             && Match == other.Match
@@ -106,6 +138,11 @@ public sealed record RouteConfig
         hash.Add(AuthorizationPolicy?.GetHashCode(StringComparison.OrdinalIgnoreCase));
 #if NET7_0_OR_GREATER
         hash.Add(RateLimiterPolicy?.GetHashCode(StringComparison.OrdinalIgnoreCase));
+        hash.Add(OutputCachePolicy?.GetHashCode(StringComparison.OrdinalIgnoreCase));
+#endif
+#if NET8_0_OR_GREATER
+        hash.Add(Timeout?.GetHashCode());
+        hash.Add(TimeoutPolicy?.GetHashCode(StringComparison.OrdinalIgnoreCase));
 #endif
         hash.Add(CorsPolicy?.GetHashCode(StringComparison.OrdinalIgnoreCase));
         hash.Add(Match);

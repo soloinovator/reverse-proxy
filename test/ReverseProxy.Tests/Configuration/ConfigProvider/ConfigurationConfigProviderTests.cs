@@ -69,7 +69,8 @@ public class ConfigurationConfigProviderTests
                             Interval = TimeSpan.FromSeconds(4),
                             Timeout = TimeSpan.FromSeconds(6),
                             Policy = "Any5xxResponse",
-                            Path = "healthCheckPath"
+                            Path = "healthCheckPath",
+                            Query = "?key=value"
                         },
                         AvailableDestinationsPolicy = "HealthyOrPanic"
                     },
@@ -131,6 +132,10 @@ public class ConfigurationConfigProviderTests
                 AuthorizationPolicy = "Default",
 #if NET7_0_OR_GREATER
                 RateLimiterPolicy = "Default",
+#endif
+#if NET8_0_OR_GREATER
+                TimeoutPolicy = "Default",
+                Timeout = TimeSpan.Zero,
 #endif
                 CorsPolicy = "Default",
                 Order = -1,
@@ -235,7 +240,8 @@ public class ConfigurationConfigProviderTests
                     ""Interval"": ""00:00:04"",
                     ""Timeout"": ""00:00:06"",
                     ""Policy"": ""Any5xxResponse"",
-                    ""Path"": ""healthCheckPath""
+                    ""Path"": ""healthCheckPath"",
+                    ""Query"": ""?key=value""
                 },
                 ""AvailableDestinationsPolicy"": ""HealthyOrPanic""
             },
@@ -343,7 +349,10 @@ public class ConfigurationConfigProviderTests
             ""ClusterId"": ""cluster1"",
             ""AuthorizationPolicy"": ""Default"",
             ""RateLimiterPolicy"": ""Default"",
+            ""OutputCachePolicy"": ""Default"",
             ""CorsPolicy"": ""Default"",
+            ""TimeoutPolicy"": ""Default"",
+            ""Timeout"": ""00:00:01"",
             ""Metadata"": {
                 ""routeA-K1"": ""routeA-V1"",
                 ""routeA-K2"": ""routeA-V2""
@@ -387,6 +396,7 @@ public class ConfigurationConfigProviderTests
             ""ClusterId"": ""cluster2"",
             ""AuthorizationPolicy"": null,
             ""RateLimiterPolicy"": null,
+            ""OutputCachePolicy"": null,
             ""CorsPolicy"": null,
             ""Metadata"": null,
             ""Transforms"": null
@@ -513,7 +523,7 @@ public class ConfigurationConfigProviderTests
         Assert.Equal(2, abstractConfig.Clusters.Count);
 
         var cluster1 = validConfig.Clusters.First(c => c.ClusterId == "cluster1");
-        Assert.Single(abstractConfig.Clusters.Where(c => c.ClusterId == "cluster1"));
+        Assert.Single(abstractConfig.Clusters, c => c.ClusterId == "cluster1");
         var abstractCluster1 = abstractConfig.Clusters.Single(c => c.ClusterId == "cluster1");
         Assert.Equal(cluster1.Destinations["destinationA"].Address, abstractCluster1.Destinations["destinationA"].Address);
         Assert.Equal(cluster1.Destinations["destinationA"].Health, abstractCluster1.Destinations["destinationA"].Health);
@@ -532,6 +542,7 @@ public class ConfigurationConfigProviderTests
         Assert.Equal(cluster1.HealthCheck.Active.Timeout, abstractCluster1.HealthCheck.Active.Timeout);
         Assert.Equal(cluster1.HealthCheck.Active.Policy, abstractCluster1.HealthCheck.Active.Policy);
         Assert.Equal(cluster1.HealthCheck.Active.Path, abstractCluster1.HealthCheck.Active.Path);
+        Assert.Equal(cluster1.HealthCheck.Active.Query, abstractCluster1.HealthCheck.Active.Query);
         Assert.Equal(LoadBalancingPolicies.Random, abstractCluster1.LoadBalancingPolicy);
         Assert.Equal(cluster1.SessionAffinity.Enabled, abstractCluster1.SessionAffinity.Enabled);
         Assert.Equal(cluster1.SessionAffinity.FailurePolicy, abstractCluster1.SessionAffinity.FailurePolicy);
@@ -558,7 +569,7 @@ public class ConfigurationConfigProviderTests
         Assert.Equal(cluster1.Metadata, abstractCluster1.Metadata);
 
         var cluster2 = validConfig.Clusters.First(c => c.ClusterId == "cluster2");
-        Assert.Single(abstractConfig.Clusters.Where(c => c.ClusterId == "cluster2"));
+        Assert.Single(abstractConfig.Clusters, c => c.ClusterId == "cluster2");
         var abstractCluster2 = abstractConfig.Clusters.Single(c => c.ClusterId == "cluster2");
         Assert.Equal(cluster2.Destinations["destinationC"].Address, abstractCluster2.Destinations["destinationC"].Address);
         Assert.Equal(cluster2.Destinations["destinationC"].Metadata, abstractCluster2.Destinations["destinationC"].Metadata);
@@ -577,7 +588,7 @@ public class ConfigurationConfigProviderTests
     private void VerifyRoute(IProxyConfig validConfig, IProxyConfig abstractConfig, string routeId)
     {
         var route = validConfig.Routes.Single(c => c.RouteId == routeId);
-        Assert.Single(abstractConfig.Routes.Where(c => c.RouteId == routeId));
+        Assert.Single(abstractConfig.Routes, r => r.RouteId == routeId);
         var abstractRoute = abstractConfig.Routes.Single(c => c.RouteId == routeId);
         Assert.Equal(route.ClusterId, abstractRoute.ClusterId);
         Assert.Equal(route.Order, abstractRoute.Order);

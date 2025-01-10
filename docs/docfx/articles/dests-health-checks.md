@@ -9,29 +9,31 @@ There are several cluster-wide configuration settings controlling active health 
 #### File example
 ```JSON
 "Clusters": {
-      "cluster1": {
-        "HealthCheck": {
-          "Active": {
-            "Enabled": "true",
-            "Interval": "00:00:10",
-            "Timeout": "00:00:10",
-            "Policy": "ConsecutiveFailures",
-            "Path": "/api/health"
-          }
-        },
-        "Metadata": {
-          "ConsecutiveFailuresHealthPolicy.Threshold": "3"
-        },
-        "Destinations": {
-          "cluster1/destination1": {
-            "Address": "https://localhost:10000/"
-          },
-          "cluster1/destination2": {
-            "Address": "http://localhost:10010/",
-            "Health": "http://localhost:10020/"
-          }
-        }
+  "cluster1": {
+    "HealthCheck": {
+      "Active": {
+        "Enabled": "true",
+        "Interval": "00:00:10",
+        "Timeout": "00:00:10",
+        "Policy": "ConsecutiveFailures",
+        "Path": "/api/health",
+        "Query": "?foo=bar"
       }
+    },
+    "Metadata": {
+      "ConsecutiveFailuresHealthPolicy.Threshold": "3"
+    },
+    "Destinations": {
+      "cluster1/destination1": {
+        "Address": "https://localhost:10000/"
+      },
+      "cluster1/destination2": {
+        "Address": "http://localhost:10010/",
+        "Health": "http://localhost:10020/"
+      }
+    }
+  }
+}
 ```
 
 #### Code example
@@ -49,7 +51,8 @@ var clusters = new[]
                 Interval = TimeSpan.FromSeconds(10),
                 Timeout = TimeSpan.FromSeconds(10),
                 Policy = HealthCheckConstants.ActivePolicy.ConsecutiveFailures,
-                Path = "/api/health"
+                Path = "/api/health",
+                Query = "?foo=bar",
             }
         },
         Metadata = new Dictionary<string, string> { { ConsecutiveFailuresHealthPolicyOptions.ThresholdMetadataName, "5" } },
@@ -74,6 +77,7 @@ Active health check settings can also be defined in code via the corresponding t
 - `Timeout` - probing request timeout. Default `00:00:10`
 - `Policy` - name of a policy evaluating destinations' active health states. Mandatory parameter
 - `Path` -  health check path on all cluster's destinations. Default `null`.
+- `Query` -  health check query on all cluster's destinations. Default `null`.
 
 `Destination` section and [DestinationConfig](xref:Yarp.ReverseProxy.Configuration.DestinationConfig).
 
@@ -182,26 +186,27 @@ There are several cluster-wide configuration settings controlling passive health
 #### File example
 ```JSON
 "Clusters": {
-      "cluster1": {
-        "HealthCheck": {
-          "Passive": {
-            "Enabled": "true",
-            "Policy": "TransportFailureRate",
-            "ReactivationPeriod": "00:02:00"
-          }
-        },
-        "Metadata": {
-          "TransportFailureRateHealthPolicy.RateLimit": "0.5"
-        },
-        "Destinations": {
-          "cluster1/destination1": {
-            "Address": "https://localhost:10000/"
-          },
-          "cluster1/destination2": {
-            "Address": "http://localhost:10010/"
-          }
-        }
+  "cluster1": {
+    "HealthCheck": {
+      "Passive": {
+        "Enabled": "true",
+        "Policy": "TransportFailureRate",
+        "ReactivationPeriod": "00:02:00"
       }
+    },
+    "Metadata": {
+      "TransportFailureRateHealthPolicy.RateLimit": "0.5"
+    },
+    "Destinations": {
+      "cluster1/destination1": {
+        "Address": "https://localhost:10000/"
+      },
+      "cluster1/destination2": {
+        "Address": "http://localhost:10010/"
+      }
+    }
+  }
+}
 ```
 
 #### Code example
@@ -340,22 +345,23 @@ Destinations health state is used to determine which of them are eligible for re
 #### File example
 ```JSON
 "Clusters": {
-      "cluster1": {
-        "AvailableDestinationsPolicy": "HealthyOrPanic",
-        "HealthCheck": {
-          "Passive": {
-            "Enabled": "true"
-          }
-        },
-        "Destinations": {
-          "cluster1/destination1": {
-            "Address": "https://localhost:10000/"
-          },
-          "cluster1/destination2": {
-            "Address": "http://localhost:10010/"
-          }
-        }
+  "cluster1": {    
+    "HealthCheck": {
+      "AvailableDestinationsPolicy": "HealthyOrPanic",
+      "Passive": {
+        "Enabled": "true"
       }
+    },
+    "Destinations": {
+      "cluster1/destination1": {
+        "Address": "https://localhost:10000/"
+      },
+      "cluster1/destination2": {
+        "Address": "http://localhost:10010/"
+      }
+    }
+  }
+}
 ```
 
 #### Code example
