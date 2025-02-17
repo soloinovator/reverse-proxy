@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Threading;
@@ -49,7 +49,7 @@ public interface IWorkQueue<TItem> : IDisposable
     void ShutDown();
 
     /// <summary>
-    /// Shuttings down.
+    /// Shutting down.
     /// </summary>
     /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
     bool ShuttingDown();

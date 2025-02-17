@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -154,7 +154,7 @@ public class HeaderMatcherPolicyTests
     [InlineData("", HeaderMatchMode.Exists, false)]
     [InlineData("abc", HeaderMatchMode.Exists, true)]
     [InlineData(null, HeaderMatchMode.NotExists, true)]
-    [InlineData("", HeaderMatchMode.NotExists, false)]
+    [InlineData("", HeaderMatchMode.NotExists, true)]
     [InlineData("abc", HeaderMatchMode.NotExists, false)]
     public async Task ApplyAsync_MatchingScenarios_AnyHeaderValue(string incomingHeaderValue, HeaderMatchMode mode, bool shouldMatch)
     {

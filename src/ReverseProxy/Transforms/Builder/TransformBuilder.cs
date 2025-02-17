@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -157,7 +157,7 @@ internal sealed class TransformBuilder : ITransformBuilder
     {
         // RequestHeaderOriginalHostKey defaults to false, and CopyRequestHeaders defaults to true.
         // If RequestHeaderOriginalHostKey was not specified then we need to make sure the transform gets
-        // added anyways to remove the original host and to observe hosts specified in DestinationConfig.
+        // added anyway to remove the original host and to observe hosts specified in DestinationConfig.
         if (!context.RequestTransforms.Any(item => item is RequestHeaderOriginalHostTransform))
         {
             context.AddOriginalHost(false);

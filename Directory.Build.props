@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+  <Import Project="TFMs.props" />
 
   <PropertyGroup>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
@@ -11,6 +12,7 @@
     <StrongNameKeyId>Microsoft</StrongNameKeyId>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <PropertyGroup>

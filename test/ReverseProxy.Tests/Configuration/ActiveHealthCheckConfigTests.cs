@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using Xunit;
@@ -54,6 +54,24 @@ public class ActiveHealthCheckConfigTests
             Timeout = TimeSpan.FromSeconds(2),
             Policy = "AnyFailure",
             Path = "/b",
+        };
+
+        var equals = options1.Equals(options2);
+
+        Assert.False(equals);
+    }
+
+    [Fact]
+    public void Equals_DifferingQueries_Returns_False()
+    {
+        var options1 = new ActiveHealthCheckConfig
+        {
+            Query = "?key=value1"
+        };
+
+        var options2 = new ActiveHealthCheckConfig
+        {
+            Query = "?key=value2"
         };
 
         var equals = options1.Equals(options2);

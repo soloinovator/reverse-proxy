@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
 using System.Threading;
@@ -65,8 +65,6 @@ public interface ISessionAffinityPolicy
     /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
     ValueTask AffinitizeResponseAsync(HttpContext context, ClusterState cluster, SessionAffinityConfig config, DestinationState destination, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         AffinitizeResponse(context, cluster, config, destination);
         return default;
     }

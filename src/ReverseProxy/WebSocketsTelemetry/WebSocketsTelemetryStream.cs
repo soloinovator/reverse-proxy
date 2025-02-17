@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.IO;
@@ -58,6 +58,9 @@ internal sealed class WebSocketsTelemetryStream : DelegatingStream
             ForwarderError.UpgradeResponseCanceled => WebSocketCloseReason.ClientDisconnect,
             ForwarderError.UpgradeRequestDestination => WebSocketCloseReason.ServerDisconnect,
             ForwarderError.UpgradeResponseDestination => WebSocketCloseReason.ServerDisconnect,
+
+            // Activity Timeout
+            ForwarderError.UpgradeActivityTimeout => WebSocketCloseReason.ActivityTimeout,
 
             // Both sides gracefully closed the underlying connection without sending a WebSocket close,
             // or the server closed the connection and we canceled the client and suppressed the errors.

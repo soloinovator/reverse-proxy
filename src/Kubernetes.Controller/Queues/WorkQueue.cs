@@ -1,12 +1,10 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-
-#pragma warning disable CA2213 // Disposable fields should be disposed
 
 namespace Yarp.Kubernetes.Controller.Queues;
 
@@ -24,7 +22,7 @@ public class WorkQueue<TItem> : IWorkQueue<TItem>
     private readonly Queue<TItem> _queue = new Queue<TItem>();
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0);
     private readonly CancellationTokenSource _shuttingDown = new CancellationTokenSource();
-    private bool _disposedValue = false; // To detect redundant calls
+    private bool _disposedValue; // To detect redundant calls
 
     /// <summary>
     /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
@@ -109,7 +107,7 @@ public class WorkQueue<TItem> : IWorkQueue<TItem>
     }
 
     /// <summary>
-    /// Dones the specified item.
+    /// Done the specified item.
     /// </summary>
     /// <param name="item">The item.</param>
     public void Done(TItem item)
@@ -150,7 +148,7 @@ public class WorkQueue<TItem> : IWorkQueue<TItem>
     }
 
     /// <summary>
-    /// Shuttings down.
+    /// Shutting down.
     /// </summary>
     /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
     public bool ShuttingDown()

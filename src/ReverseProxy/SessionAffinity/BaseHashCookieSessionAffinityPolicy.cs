@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -29,6 +29,12 @@ internal abstract class BaseHashCookieSessionAffinityPolicy : ISessionAffinityPo
         if (!config.Enabled.GetValueOrDefault())
         {
             throw new InvalidOperationException("Session affinity is disabled for cluster.");
+        }
+
+        if (context.RequestAborted.IsCancellationRequested)
+        {
+            // Avoid wasting time if the client is already gone.
+            return;
         }
 
         // Affinity key is set on the response only if it's a new affinity.

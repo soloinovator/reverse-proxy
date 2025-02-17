@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Diagnostics;
@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using Yarp.ReverseProxy.Transforms.Builder;
 
@@ -258,7 +259,18 @@ public class HttpTransformer
                 continue;
             }
 
-            destination[headerName] = RequestUtilities.Concat(destination[headerName], header.Value);
+            var currentValue = destination[headerName];
+
+            // https://github.com/dotnet/yarp/issues/2269
+            // The Strict-Transport-Security may be added by the proxy before forwarding. Only copy the header
+            // if it's not already present.
+            if (!StringValues.IsNullOrEmpty(currentValue)
+                && string.Equals(headerName, HeaderNames.StrictTransportSecurity, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            destination[headerName] = RequestUtilities.Concat(currentValue, header.Value);
         }
     }
 }

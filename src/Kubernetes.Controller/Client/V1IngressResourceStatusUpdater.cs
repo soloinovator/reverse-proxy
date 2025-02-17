@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 using System;
 using System.Linq;
 using k8s;
@@ -37,7 +37,13 @@ internal sealed class V1IngressResourceStatusUpdater : IIngressResourceStatusUpd
         var service = await _client.CoreV1.ReadNamespacedServiceStatusAsync(_options.ControllerServiceName, _options.ControllerServiceNamespace, cancellationToken: cancellationToken);
         if (service.Status?.LoadBalancer?.Ingress is { } loadBalancerIngresses)
         {
-            var status = new V1IngressStatus(new V1LoadBalancerStatus(loadBalancerIngresses));
+            var status = new V1IngressStatus(new V1IngressLoadBalancerStatus(loadBalancerIngresses?.Select(ingress => new V1IngressLoadBalancerIngress
+            {
+                Hostname = ingress.Hostname,
+                Ip = ingress.Ip,
+                Ports = ingress.Ports?.Select(port => new V1IngressPortStatus(port.Port, port.Protocol, port.Error)).ToArray()
+            }).ToArray()));
+
             var ingresses = _cache.GetIngresses().ToArray();
             foreach (var ingress in ingresses)
             {
