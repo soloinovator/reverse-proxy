@@ -1,9 +1,10 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Net.Http.Headers;
 using Yarp.ReverseProxy.Model;
@@ -20,7 +21,8 @@ internal sealed class DefaultProbingRequestFactory : IProbingRequestFactory
         var probeAddress = !string.IsNullOrEmpty(destination.Config.Health) ? destination.Config.Health : destination.Config.Address;
         var probePath = cluster.Config.HealthCheck?.Active?.Path;
         UriHelper.FromAbsolute(probeAddress, out var destinationScheme, out var destinationHost, out var destinationPathBase, out _, out _);
-        var probeUri = UriHelper.BuildAbsolute(destinationScheme, destinationHost, destinationPathBase, probePath, default);
+        var query = QueryString.FromUriComponent(cluster.Config.HealthCheck?.Active?.Query ?? "");
+        var probeUri = UriHelper.BuildAbsolute(destinationScheme, destinationHost, destinationPathBase, probePath, query);
 
         var request = new HttpRequestMessage(HttpMethod.Get, probeUri)
         {

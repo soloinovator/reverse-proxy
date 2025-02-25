@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
 
@@ -27,7 +27,7 @@ public interface IReverseProxyFeature
 
     /// <summary>
     /// Cluster destinations that can handle the current request. This will initially include all destinations except those
-    /// currently marked as unhealth if health checks are enabled.
+    /// currently marked as unhealthy if health checks are enabled.
     /// </summary>
     IReadOnlyList<DestinationState> AvailableDestinations { get; set; }
 

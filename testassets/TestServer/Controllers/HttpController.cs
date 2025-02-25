@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -35,6 +35,18 @@ public class HttpController : ControllerBase
     public IActionResult SkipBody()
     {
         return StatusCode(StatusCodes.Status409Conflict);
+    }
+
+    /// <summary>
+    /// Returns a 409 response without consuming the request body.
+    /// This is used to exercise <c>Expect:100-continue</c> behavior.
+    /// </summary>
+    [HttpGet]
+    [Route("/api/slow")]
+    public async Task<IActionResult> Slow()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        return StatusCode(StatusCodes.Status200OK);
     }
 
     /// <summary>

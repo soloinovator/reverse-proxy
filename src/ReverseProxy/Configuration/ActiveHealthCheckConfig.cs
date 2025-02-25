@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 
@@ -35,6 +35,11 @@ public sealed record ActiveHealthCheckConfig
     /// </summary>
     public string? Path { get; init; }
 
+    /// <summary>
+    /// Query string to append to the probe, including the leading '?'.
+    /// </summary>
+    public string? Query { get; init; }
+
     public bool Equals(ActiveHealthCheckConfig? other)
     {
         if (other is null)
@@ -46,7 +51,8 @@ public sealed record ActiveHealthCheckConfig
             && Interval == other.Interval
             && Timeout == other.Timeout
             && string.Equals(Policy, other.Policy, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(Path, other.Path, StringComparison.Ordinal);
+            && string.Equals(Path, other.Path, StringComparison.Ordinal)
+            && string.Equals(Query, other.Query, StringComparison.Ordinal);
     }
 
     public override int GetHashCode()
@@ -55,6 +61,7 @@ public sealed record ActiveHealthCheckConfig
             Interval,
             Timeout,
             Policy?.GetHashCode(StringComparison.OrdinalIgnoreCase),
-            Path?.GetHashCode(StringComparison.Ordinal));
+            Path?.GetHashCode(StringComparison.Ordinal),
+            Query?.GetHashCode(StringComparison.Ordinal));
     }
 }

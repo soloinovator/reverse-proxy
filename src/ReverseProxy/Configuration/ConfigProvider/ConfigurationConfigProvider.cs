@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -112,7 +112,7 @@ internal sealed class ConfigurationConfigProvider : IProxyConfigProvider, IDispo
         }
     }
 
-    private ClusterConfig CreateCluster(IConfigurationSection section)
+    private static ClusterConfig CreateCluster(IConfigurationSection section)
     {
         var destinations = new Dictionary<string, DestinationConfig>(StringComparer.OrdinalIgnoreCase);
         foreach (var destination in section.GetSection(nameof(ClusterConfig.Destinations)).GetChildren())
@@ -149,6 +149,11 @@ internal sealed class ConfigurationConfigProvider : IProxyConfigProvider, IDispo
             AuthorizationPolicy = section[nameof(RouteConfig.AuthorizationPolicy)],
 #if NET7_0_OR_GREATER
             RateLimiterPolicy = section[nameof(RouteConfig.RateLimiterPolicy)],
+            OutputCachePolicy = section[nameof(RouteConfig.OutputCachePolicy)],
+#endif
+#if NET8_0_OR_GREATER
+            TimeoutPolicy = section[nameof(RouteConfig.TimeoutPolicy)],
+            Timeout = section.ReadTimeSpan(nameof(RouteConfig.Timeout)),
 #endif
             CorsPolicy = section[nameof(RouteConfig.CorsPolicy)],
             Metadata = section.GetSection(nameof(RouteConfig.Metadata)).ReadStringDictionary(),
@@ -157,15 +162,16 @@ internal sealed class ConfigurationConfigProvider : IProxyConfigProvider, IDispo
         };
     }
 
-    private static IReadOnlyList<IReadOnlyDictionary<string, string>>? CreateTransforms(IConfigurationSection section)
+    private static Dictionary<string, string>[]? CreateTransforms(IConfigurationSection section)
     {
         if (section.GetChildren() is var children && !children.Any())
         {
             return null;
         }
 
-        return children.Select(subSection =>
-                subSection.GetChildren().ToDictionary(d => d.Key, d => d.Value!, StringComparer.OrdinalIgnoreCase)).ToList();
+        return children
+            .Select(subSection => subSection.GetChildren().ToDictionary(d => d.Key, d => d.Value!, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
     }
 
     private static RouteMatch CreateRouteMatch(IConfigurationSection section)
@@ -185,14 +191,14 @@ internal sealed class ConfigurationConfigProvider : IProxyConfigProvider, IDispo
         };
     }
 
-    private static IReadOnlyList<RouteHeader>? CreateRouteHeaders(IConfigurationSection section)
+    private static RouteHeader[]? CreateRouteHeaders(IConfigurationSection section)
     {
         if (!section.Exists())
         {
             return null;
         }
 
-        return section.GetChildren().Select(data => CreateRouteHeader(data)).ToArray();
+        return section.GetChildren().Select(CreateRouteHeader).ToArray();
     }
 
     private static RouteHeader CreateRouteHeader(IConfigurationSection section)
@@ -206,14 +212,14 @@ internal sealed class ConfigurationConfigProvider : IProxyConfigProvider, IDispo
         };
     }
 
-    private static IReadOnlyList<RouteQueryParameter>? CreateRouteQueryParameters(IConfigurationSection section)
+    private static RouteQueryParameter[]? CreateRouteQueryParameters(IConfigurationSection section)
     {
         if (!section.Exists())
         {
             return null;
         }
 
-        return section.GetChildren().Select(data => CreateRouteQueryParameter(data)).ToArray();
+        return section.GetChildren().Select(CreateRouteQueryParameter).ToArray();
     }
 
     private static RouteQueryParameter CreateRouteQueryParameter(IConfigurationSection section)
@@ -307,7 +313,8 @@ internal sealed class ConfigurationConfigProvider : IProxyConfigProvider, IDispo
             Interval = section.ReadTimeSpan(nameof(ActiveHealthCheckConfig.Interval)),
             Timeout = section.ReadTimeSpan(nameof(ActiveHealthCheckConfig.Timeout)),
             Policy = section[nameof(ActiveHealthCheckConfig.Policy)],
-            Path = section[nameof(ActiveHealthCheckConfig.Path)]
+            Path = section[nameof(ActiveHealthCheckConfig.Path)],
+            Query = section[nameof(ActiveHealthCheckConfig.Query)]
         };
     }
 

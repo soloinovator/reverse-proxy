@@ -1,10 +1,10 @@
 # Authentication & Authorization sample
 
-This sample shows how the YARP proxy can be integrated with the ASP.NET [authentication](https://docs.microsoft.com/aspnet/core/security/authentication) and [authorization](https://docs.microsoft.com/en-us/aspnet/core/security/authorization/introduction) system to specify claims requirements on routes that will be enforced by the proxy before it will forward applicable requests. 
+This sample shows how the YARP proxy can be integrated with the ASP.NET [authentication](https://docs.microsoft.com/aspnet/core/security/authentication) and [authorization](https://docs.microsoft.com/aspnet/core/security/authorization/introduction) system to specify claims requirements on routes that will be enforced by the proxy before it will forward applicable requests.
 
 The sample includes the following parts:
 
-- ### [Startup.cs](Startup.cs)
+- ### [Program.cs](Program.cs)
   Sets up the ASP.NET server to have the proxy together with the other middleware for authentication, authorization and Razor pages.
   It sets up a custom authorization policy "myPolicy" with a custom claim.
 

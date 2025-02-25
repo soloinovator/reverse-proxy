@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -18,7 +18,7 @@ public interface IProxyStateLookup
     bool TryGetRoute(string id, [NotNullWhen(true)] out RouteModel? route);
 
     /// <summary>
-    /// Enumerates all current routes. This is thread safe but the collection may change mid enumeration if the configuration is reloaded.
+    /// Enumerates all current routes. This is thread safe but the collection may change mid-enumeration if the configuration is reloaded.
     /// </summary>
     IEnumerable<RouteModel> GetRoutes();
 
@@ -28,7 +28,7 @@ public interface IProxyStateLookup
     bool TryGetCluster(string id, [NotNullWhen(true)] out ClusterState? cluster);
 
     /// <summary>
-    /// Enumerates all current clusters. This is thread safe but the collection may change mid enumeration if the configuration is reloaded.
+    /// Enumerates all current clusters. This is thread safe but the collection may change mid-enumeration if the configuration is reloaded.
     /// </summary>
     IEnumerable<ClusterState> GetClusters();
 }

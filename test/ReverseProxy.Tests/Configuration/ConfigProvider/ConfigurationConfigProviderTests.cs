@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections;
@@ -11,17 +11,28 @@ using System.Net.Http;
 using System.Reflection;
 using System.Security.Authentication;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading.Tasks;
+using Json.Schema;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using Yarp.ReverseProxy.LoadBalancing;
 using Yarp.ReverseProxy.Forwarder;
+using Yarp.ReverseProxy.LoadBalancing;
 
 namespace Yarp.ReverseProxy.Configuration.ConfigProvider.Tests;
 
 public class ConfigurationConfigProviderTests
 {
+    private static readonly JsonSchema s_yarpSchema = JsonSchema.FromText(File.ReadAllText("ConfigurationSchema.json"));
+    private static readonly EvaluationOptions s_schemaOptions = new()
+    {
+        OutputFormat = OutputFormat.List,
+        RequireFormatValidation = true
+    };
+
     #region JSON test configuration
 
     private readonly ConfigurationSnapshot _validConfigurationData = new ConfigurationSnapshot()
@@ -69,7 +80,8 @@ public class ConfigurationConfigProviderTests
                             Interval = TimeSpan.FromSeconds(4),
                             Timeout = TimeSpan.FromSeconds(6),
                             Policy = "Any5xxResponse",
-                            Path = "healthCheckPath"
+                            Path = "healthCheckPath",
+                            Query = "?key=value"
                         },
                         AvailableDestinationsPolicy = "HealthyOrPanic"
                     },
@@ -132,6 +144,10 @@ public class ConfigurationConfigProviderTests
 #if NET7_0_OR_GREATER
                 RateLimiterPolicy = "Default",
 #endif
+#if NET8_0_OR_GREATER
+                TimeoutPolicy = "Default",
+                Timeout = TimeSpan.Zero,
+#endif
                 CorsPolicy = "Default",
                 Order = -1,
                 MaxRequestBodySize = -1,
@@ -163,7 +179,23 @@ public class ConfigurationConfigProviderTests
                 },
                 Transforms = new[]
                 {
-                    new Dictionary<string, string> { { "PathRemovePrefix", "/apis" }, { "RequestHeadersCopy", "true" } }, new Dictionary<string, string> { { "PathPrefix", "/apis" } }
+                    new Dictionary<string, string>
+                    {
+                        { "RequestHeadersCopy", "true" }
+                    },
+                    new Dictionary<string, string>
+                    {
+                        { "PathRemovePrefix", "/apis" },
+                    },
+                    new Dictionary<string, string>
+                    {
+                        { "PathPrefix", "/apis" }
+                    },
+                    new Dictionary<string, string>
+                    {
+                        { "RequestHeader", "header1" },
+                        { "Append", "foo" }
+                    }
                 },
                 Metadata = new Dictionary<string, string> { { "routeA-K1", "routeA-V1" }, { "routeA-K2", "routeA-V2" } }
             },
@@ -203,210 +235,223 @@ public class ConfigurationConfigProviderTests
         }
     };
 
-    private const string _validJsonConfig = @"
-{
-    ""Clusters"": {
-        ""cluster1"": {
-            ""LoadBalancingPolicy"": ""Random"",
-            ""SessionAffinity"": {
-                ""Enabled"": true,
-                ""Policy"": ""Cookie"",
-                ""FailurePolicy"": ""Return503Error"",
-                ""AffinityKeyName"": ""Key1"",
-                ""Cookie"": {
-                    ""Domain"": ""localhost"",
-                    ""Expiration"": ""03:00:00"",
-                    ""HttpOnly"": true,
-                    ""IsEssential"": true,
-                    ""MaxAge"": ""1.00:00:00"",
-                    ""Path"": ""mypath"",
-                    ""SameSite"": ""Strict"",
-                    ""SecurePolicy"": ""None""
-                }
-            },
-            ""HealthCheck"": {
-                ""Passive"": {
-                    ""Enabled"": true,
-                    ""Policy"": ""FailureRate"",
-                    ""ReactivationPeriod"": ""00:05:00""
-                },
-                ""Active"": {
-                    ""Enabled"": true,
-                    ""Interval"": ""00:00:04"",
-                    ""Timeout"": ""00:00:06"",
-                    ""Policy"": ""Any5xxResponse"",
-                    ""Path"": ""healthCheckPath""
-                },
-                ""AvailableDestinationsPolicy"": ""HealthyOrPanic""
-            },
-            ""HttpClient"": {
-                ""SslProtocols"": [
-                    ""Tls11"",
-                    ""Tls12""
-                ],
-                ""DangerousAcceptAnyServerCertificate"": true,
-                ""MaxConnectionsPerServer"": 10,
-                ""EnableMultipleHttp2Connections"": true,
-                ""RequestHeaderEncoding"": ""utf-8"",
-                ""ResponseHeaderEncoding"": ""utf-8"",
-                ""WebProxy"": {
-                    ""Address"": ""http://localhost:8080"",
-                    ""BypassOnLocal"": true,
-                    ""UseDefaultCredentials"": true
-                }
-            },
-            ""HttpRequest"": {
-                ""ActivityTimeout"": ""00:01:00"",
-                ""Version"": ""1"",
-                ""VersionPolicy"": ""RequestVersionExact"",
-                ""AllowResponseBuffering"": ""true""
-            },
-            ""Destinations"": {
-                ""destinationA"": {
-                    ""Address"": ""https://localhost:10000/destA"",
-                    ""Health"": ""https://localhost:20000/destA"",
-                    ""Host"": ""localhost"",
-                    ""Metadata"": {
-                        ""destA-K1"": ""destA-V1"",
-                        ""destA-K2"": ""destA-V2""
+    private const string ValidJsonConfig =
+        """
+        {
+            "Clusters": {
+                "cluster1": {
+                    "LoadBalancingPolicy": "Random",
+                    "SessionAffinity": {
+                        "Enabled": true,
+                        "Policy": "Cookie",
+                        "FailurePolicy": "Return503Error",
+                        "AffinityKeyName": "Key1",
+                        "Cookie": {
+                            "Domain": "localhost",
+                            "Expiration": "03:00:00",
+                            "HttpOnly": true,
+                            "IsEssential": true,
+                            "MaxAge": "1.00:00:00",
+                            "Path": "mypath",
+                            "SameSite": "Strict",
+                            "SecurePolicy": "None"
+                        }
+                    },
+                    "HealthCheck": {
+                        "Passive": {
+                            "Enabled": true,
+                            "Policy": "FailureRate",
+                            "ReactivationPeriod": "00:05:00"
+                        },
+                        "Active": {
+                            "Enabled": true,
+                            "Interval": "00:00:04",
+                            "Timeout": "00:00:06",
+                            "Policy": "Any5xxResponse",
+                            "Path": "healthCheckPath",
+                            "Query": "?key=value"
+                        },
+                        "AvailableDestinationsPolicy": "HealthyOrPanic"
+                    },
+                    "HttpClient": {
+                        "SslProtocols": [
+                            "Tls11",
+                            "Tls12"
+                        ],
+                        "DangerousAcceptAnyServerCertificate": true,
+                        "MaxConnectionsPerServer": 10,
+                        "EnableMultipleHttp2Connections": true,
+                        "RequestHeaderEncoding": "utf-8",
+                        "ResponseHeaderEncoding": "utf-8",
+                        "WebProxy": {
+                            "Address": "http://localhost:8080",
+                            "BypassOnLocal": true,
+                            "UseDefaultCredentials": true
+                        }
+                    },
+                    "HttpRequest": {
+                        "ActivityTimeout": "00:01:00",
+                        "Version": "1",
+                        "VersionPolicy": "RequestVersionExact",
+                        "AllowResponseBuffering": true
+                    },
+                    "Destinations": {
+                        "destinationA": {
+                            "Address": "https://localhost:10000/destA",
+                            "Health": "https://localhost:20000/destA",
+                            "Host": "localhost",
+                            "Metadata": {
+                                "destA-K1": "destA-V1",
+                                "destA-K2": "destA-V2"
+                            }
+                        },
+                        "destinationB": {
+                            "Address": "https://localhost:10000/destB",
+                            "Health": "https://localhost:20000/destB",
+                            "Host": "localhost",
+                            "Metadata": {
+                                "destB-K1": "destB-V1",
+                                "destB-K2": "destB-V2"
+                            }
+                        }
+                    },
+                    "Metadata": {
+                        "cluster1-K1": "cluster1-V1",
+                        "cluster1-K2": "cluster1-V2"
                     }
                 },
-                ""destinationB"": {
-                    ""Address"": ""https://localhost:10000/destB"",
-                    ""Health"": ""https://localhost:20000/destB"",
-                    ""Host"": ""localhost"",
-                    ""Metadata"": {
-                        ""destB-K1"": ""destB-V1"",
-                        ""destB-K2"": ""destB-V2""
-                    }
+                "cluster2": {
+                    "LoadBalancingPolicy": "RoundRobin",
+                    "SessionAffinity": null,
+                    "HealthCheck": null,
+                    "HttpClient": null,
+                    "Destinations": {
+                        "destinationC": {
+                            "Address": "https://localhost:10001/destC",
+                            "Host": "localhost",
+                            "Metadata": null
+                        },
+                        "destinationD": {
+                            "Address": "https://localhost:10000/destB",
+                            "Host": "remotehost",
+                            "Metadata": null
+                        }
+                    },
+                    "Metadata": null
                 }
             },
-            ""Metadata"": {
-                ""cluster1-K1"": ""cluster1-V1"",
-                ""cluster1-K2"": ""cluster1-V2""
+            "Routes": {
+                "routeA" : {
+                    "Match": {
+                        "Methods": [
+                            "GET",
+                            "POST",
+                            "DELETE"
+                        ],
+                        "Hosts": [
+                            "host-A"
+                        ],
+                        "Path": "/apis/entities",
+                        "Headers": [
+                          {
+                            "Name": "header1",
+                            "Values": [ "value1" ],
+                            "IsCaseSensitive": true,
+                            "Mode": "HeaderPrefix"
+                          }
+                        ],
+                        "QueryParameters": [
+                          {
+                            "Name": "queryparam1",
+                            "Values": [ "value1" ],
+                            "IsCaseSensitive": true,
+                            "Mode": "Contains"
+                          }
+                        ]
+                    },
+                    "Order": -1,
+                    "MaxRequestBodySize": -1,
+                    "ClusterId": "cluster1",
+                    "AuthorizationPolicy": "Default",
+                    "RateLimiterPolicy": "Default",
+                    "OutputCachePolicy": "Default",
+                    "CorsPolicy": "Default",
+                    "TimeoutPolicy": "Default",
+                    "Timeout": "00:00:01",
+                    "Metadata": {
+                        "routeA-K1": "routeA-V1",
+                        "routeA-K2": "routeA-V2"
+                    },
+                    "Transforms": [
+                        {
+                            "RequestHeadersCopy": true
+                        },
+                        {
+                            "PathRemovePrefix": "/apis"
+                        },
+                        {
+                            "PathPrefix": "/apis"
+                        },
+                        {
+                            "RequestHeader": "header1",
+                            "Append": "foo"
+                        }
+                    ]
+                },
+                "routeB" : {
+                    "Match": {
+                        "Methods": [
+                            "GET"
+                        ],
+                        "Hosts": [
+                            "host-B"
+                        ],
+                        "Path": "/apis/users",
+                        "Headers": [
+                          {
+                            "Name": "header2",
+                            "Values": [ "value2" ]
+                          }
+                        ],
+                        "QueryParameters": [
+                          {
+                            "Name": "queryparam2",
+                            "Values": [ "value2" ],
+                            "IsCaseSensitive": true,
+                            "Mode": "Contains"
+                          }
+                        ]
+                    },
+                    "Order": 2,
+                    "MaxRequestBodySize": 1,
+                    "ClusterId": "cluster2",
+                    "AuthorizationPolicy": null,
+                    "RateLimiterPolicy": null,
+                    "OutputCachePolicy": null,
+                    "CorsPolicy": null,
+                    "Metadata": null,
+                    "Transforms": null
+                }
             }
-        },
-        ""cluster2"": {
-            ""CircuitBreaker"": null,
-            ""Quota"": null,
-            ""Partitioning"": null,
-            ""LoadBalancingPolicy"": ""RoundRobin"",
-            ""SessionAffinity"": null,
-            ""HealthCheck"": null,
-            ""HttpClient"": null,
-            ""Destinations"": {
-                ""destinationC"": {
-                    ""Address"": ""https://localhost:10001/destC"",
-                    ""Host"": ""localhost"",
-                    ""Metadata"": null
-                },
-                ""destinationD"": {
-                    ""Address"": ""https://localhost:10000/destB"",
-                    ""Host"": ""remotehost"",
-                    ""Metadata"": null
-                }
-            },
-            ""Metadata"": null
         }
-    },
-    ""Routes"": {
-        ""routeA"" : {
-            ""Match"": {
-                ""Methods"": [
-                    ""GET"",
-                    ""POST"",
-                    ""DELETE""
-                ],
-                ""Hosts"": [
-                    ""host-A""
-                ],
-                ""Path"": ""/apis/entities"",
-                ""Headers"": [
-                  {
-                    ""Name"": ""header1"",
-                    ""Values"": [ ""value1"" ],
-                    ""IsCaseSensitive"": true,
-                    ""Mode"": ""HeaderPrefix""
-                  }
-                ],
-                ""QueryParameters"": [
-                  {
-                    ""Name"": ""queryparam1"",
-                    ""Values"": [ ""value1"" ],
-                    ""IsCaseSensitive"": true,
-                    ""Mode"": ""Contains""
-                  }
-                ]
-            },
-            ""Order"": -1,
-            ""MaxRequestBodySize"": -1,
-            ""ClusterId"": ""cluster1"",
-            ""AuthorizationPolicy"": ""Default"",
-            ""RateLimiterPolicy"": ""Default"",
-            ""CorsPolicy"": ""Default"",
-            ""Metadata"": {
-                ""routeA-K1"": ""routeA-V1"",
-                ""routeA-K2"": ""routeA-V2""
-            },
-            ""Transforms"": [
-                {
-                    ""RequestHeadersCopy"": ""true"",
-                    ""PathRemovePrefix"": ""/apis""
-                },
-                {
-                    ""PathPrefix"": ""/apis""
-                }
-            ]
-        },
-        ""routeB"" : {
-            ""Match"": {
-                ""Methods"": [
-                    ""GET""
-                ],
-                ""Hosts"": [
-                    ""host-B""
-                ],
-                ""Path"": ""/apis/users"",
-                ""Headers"": [
-                  {
-                    ""Name"": ""header2"",
-                    ""Values"": [ ""value2"" ]
-                  }
-                ],
-                ""QueryParameters"": [
-                  {
-                    ""Name"": ""queryparam2"",
-                    ""Values"": [ ""value2"" ],
-                    ""IsCaseSensitive"": true,
-                    ""Mode"": ""Contains""
-                  }
-                ]
-            },
-            ""Order"": 2,
-            ""MaxRequestBodySize"": 1,
-            ""ClusterId"": ""cluster2"",
-            ""AuthorizationPolicy"": null,
-            ""RateLimiterPolicy"": null,
-            ""CorsPolicy"": null,
-            ""Metadata"": null,
-            ""Transforms"": null
-        }
-    }
-}
-";
+        """;
 
     #endregion
+
+    private static ConfigurationConfigProvider CreateProvider(string json)
+    {
+        var builder = new ConfigurationBuilder();
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var configuration = builder.AddJsonStream(stream).Build();
+        var logger = new Mock<ILogger<ConfigurationConfigProvider>>();
+
+        return new ConfigurationConfigProvider(logger.Object, configuration);
+    }
 
     [Fact]
     public void GetConfig_ValidSerializedConfiguration_ConvertToAbstractionsSuccessfully()
     {
-        var builder = new ConfigurationBuilder();
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(_validJsonConfig));
-        var proxyConfig = builder.AddJsonStream(stream).Build();
-        var logger = new Mock<ILogger<ConfigurationConfigProvider>>();
-
-        var provider = new ConfigurationConfigProvider(logger.Object, proxyConfig);
-        Assert.NotNull(provider);
+        var provider = CreateProvider(ValidJsonConfig);
         var abstractConfig = provider.GetConfig();
 
         VerifyValidAbstractConfig(_validConfigurationData, abstractConfig);
@@ -415,12 +460,7 @@ public class ConfigurationConfigProviderTests
     [Fact]
     public void GetConfig_ValidConfiguration_AllAbstractionsPropertiesAreSet()
     {
-        var builder = new ConfigurationBuilder();
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(_validJsonConfig));
-        var proxyConfig = builder.AddJsonStream(stream).Build();
-        var logger = new Mock<ILogger<ConfigurationConfigProvider>>();
-
-        var provider = new ConfigurationConfigProvider(logger.Object, proxyConfig);
+        var provider = CreateProvider(ValidJsonConfig);
         var abstractConfig = (ConfigurationSnapshot)provider.GetConfig();
 
         var abstractionsNamespace = typeof(ClusterConfig).Namespace;
@@ -490,30 +530,13 @@ public class ConfigurationConfigProviderTests
         }
     }
 
-    private void TriggerOnChange(IConfigurationRoot configurationRoot)
-    {
-        // This method is protected so we use reflection to trigger it. The alternative is to wrap or implement
-        // a custom configuration provider and expose OnReload as a public method
-        var reload = typeof(ConfigurationProvider).GetMethod("OnReload", BindingFlags.NonPublic | BindingFlags.Instance);
-
-        Assert.NotNull(reload);
-
-        foreach (var provider in configurationRoot.Providers)
-        {
-            if (provider is ConfigurationProvider configProvider)
-            {
-                reload.Invoke(configProvider, Array.Empty<object>());
-            }
-        }
-    }
-
     private void VerifyValidAbstractConfig(IProxyConfig validConfig, IProxyConfig abstractConfig)
     {
         Assert.NotNull(abstractConfig);
         Assert.Equal(2, abstractConfig.Clusters.Count);
 
         var cluster1 = validConfig.Clusters.First(c => c.ClusterId == "cluster1");
-        Assert.Single(abstractConfig.Clusters.Where(c => c.ClusterId == "cluster1"));
+        Assert.Single(abstractConfig.Clusters, c => c.ClusterId == "cluster1");
         var abstractCluster1 = abstractConfig.Clusters.Single(c => c.ClusterId == "cluster1");
         Assert.Equal(cluster1.Destinations["destinationA"].Address, abstractCluster1.Destinations["destinationA"].Address);
         Assert.Equal(cluster1.Destinations["destinationA"].Health, abstractCluster1.Destinations["destinationA"].Health);
@@ -532,6 +555,7 @@ public class ConfigurationConfigProviderTests
         Assert.Equal(cluster1.HealthCheck.Active.Timeout, abstractCluster1.HealthCheck.Active.Timeout);
         Assert.Equal(cluster1.HealthCheck.Active.Policy, abstractCluster1.HealthCheck.Active.Policy);
         Assert.Equal(cluster1.HealthCheck.Active.Path, abstractCluster1.HealthCheck.Active.Path);
+        Assert.Equal(cluster1.HealthCheck.Active.Query, abstractCluster1.HealthCheck.Active.Query);
         Assert.Equal(LoadBalancingPolicies.Random, abstractCluster1.LoadBalancingPolicy);
         Assert.Equal(cluster1.SessionAffinity.Enabled, abstractCluster1.SessionAffinity.Enabled);
         Assert.Equal(cluster1.SessionAffinity.FailurePolicy, abstractCluster1.SessionAffinity.FailurePolicy);
@@ -558,7 +582,7 @@ public class ConfigurationConfigProviderTests
         Assert.Equal(cluster1.Metadata, abstractCluster1.Metadata);
 
         var cluster2 = validConfig.Clusters.First(c => c.ClusterId == "cluster2");
-        Assert.Single(abstractConfig.Clusters.Where(c => c.ClusterId == "cluster2"));
+        Assert.Single(abstractConfig.Clusters, c => c.ClusterId == "cluster2");
         var abstractCluster2 = abstractConfig.Clusters.Single(c => c.ClusterId == "cluster2");
         Assert.Equal(cluster2.Destinations["destinationC"].Address, abstractCluster2.Destinations["destinationC"].Address);
         Assert.Equal(cluster2.Destinations["destinationC"].Metadata, abstractCluster2.Destinations["destinationC"].Metadata);
@@ -577,7 +601,7 @@ public class ConfigurationConfigProviderTests
     private void VerifyRoute(IProxyConfig validConfig, IProxyConfig abstractConfig, string routeId)
     {
         var route = validConfig.Routes.Single(c => c.RouteId == routeId);
-        Assert.Single(abstractConfig.Routes.Where(c => c.RouteId == routeId));
+        Assert.Single(abstractConfig.Routes, r => r.RouteId == routeId);
         var abstractRoute = abstractConfig.Routes.Single(c => c.RouteId == routeId);
         Assert.Equal(route.ClusterId, abstractRoute.ClusterId);
         Assert.Equal(route.Order, abstractRoute.Order);
@@ -597,7 +621,85 @@ public class ConfigurationConfigProviderTests
         Assert.Equal(queryparam.Mode, expectedQueryParam.Mode);
         Assert.Equal(queryparam.IsCaseSensitive, expectedQueryParam.IsCaseSensitive);
 
-        // Skipping header.Value/s because it's a fuzzy match
-        Assert.Equal(route.Transforms, abstractRoute.Transforms);
+        if (route.Transforms is null)
+        {
+            Assert.Null(abstractRoute.Transforms);
+        }
+        else
+        {
+            Assert.NotNull(abstractRoute.Transforms);
+            Assert.Equal(route.Transforms.Count, abstractRoute.Transforms.Count);
+
+            for (var i = 0; i < route.Transforms.Count; i++)
+            {
+                var transform = route.Transforms[i];
+                var expectedTransform = abstractRoute.Transforms[i];
+
+                Assert.Equal(transform.Count, expectedTransform.Count);
+                foreach (var kv in transform)
+                {
+                    Assert.True(expectedTransform.TryGetValue(kv.Key, out var value));
+
+                    if (value == "True")
+                    {
+                        value = "true";
+                    }
+
+                    Assert.Equal(kv.Value, value);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void ValidateSchema_ValidInput()
+    {
+        var results = s_yarpSchema.Evaluate(JsonNode.Parse(
+            $$"""
+            {
+              "ReverseProxy": {{ValidJsonConfig}}
+            }
+            """),
+            s_schemaOptions);
+
+        var errors = results.Details
+            .Where(d => d.HasErrors)
+            .SelectMany(d => d.Errors!.Select(error => $"Path:${d.InstanceLocation} {error.Key}:{error.Value}"))
+            .ToArray();
+
+        Assert.True(results.IsValid);
+        Assert.False(results.HasErrors);
+        Assert.True(results.Details.Count > 300);
+    }
+
+    [Fact]
+    public async Task ValidateSchema_Samples()
+    {
+        string repoRoot = Path.Combine(Environment.CurrentDirectory, "../../../../../");
+        repoRoot = Path.GetFullPath(repoRoot);
+
+        foreach (string file in Directory.EnumerateFiles(repoRoot, "*.json", SearchOption.AllDirectories))
+        {
+            if (file.Contains("appsettings", StringComparison.OrdinalIgnoreCase))
+            {
+                var contents = await File.ReadAllTextAsync(file);
+                var document = JsonDocument.Parse(contents, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip });
+                var results = s_yarpSchema.Evaluate(document.RootElement, s_schemaOptions);
+
+                if (results.IsValid)
+                {
+                    Assert.False(results.HasErrors);
+
+                    if (contents.Contains("\"ReverseProxy\"", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Assert.True(results.Details.Count > 5);
+                    }
+                }
+                else
+                {
+                    Assert.Fail($"Json errors reported for '{file}'");
+                }
+            }
+        }
     }
 }
