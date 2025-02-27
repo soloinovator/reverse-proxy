@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Net;
@@ -19,7 +19,9 @@ public class RequestHeaderXForwardedForTransformTests
     [InlineData("", "", ForwardedTransformActions.Remove, "")]
     [InlineData("", "::1", ForwardedTransformActions.Set, "::1")]
     [InlineData("", "127.0.0.1", ForwardedTransformActions.Set, "127.0.0.1")]
+    [InlineData("", "::ffff:127.0.0.1", ForwardedTransformActions.Set, "127.0.0.1")]
     [InlineData("", "127.0.0.1", ForwardedTransformActions.Append, "127.0.0.1")]
+    [InlineData("", "::ffff:127.0.0.1", ForwardedTransformActions.Append, "127.0.0.1")]
     [InlineData("", "127.0.0.1", ForwardedTransformActions.Remove, "")]
     [InlineData("existing,Header", "", ForwardedTransformActions.Set, "")]
     [InlineData("existing;Header", "", ForwardedTransformActions.Set, "")]

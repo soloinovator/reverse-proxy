@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -244,7 +244,7 @@ internal sealed class HttpEventListenerService : EventListenerService<HttpEventL
             case 15:
                 Debug.Assert(eventData.EventName == "RequestFailedDetailed" && payload.Count == 1);
                 // This event is more expensive to collect and requires an opt-in keyword.
-                Debug.Fail("We shouldn't be seeing this event as the base EventListenerService always uses EventKeywords.None.");
+                // We should only see it if a different EventListener opted in (potentially from a different process).
                 break;
 
             case 16:

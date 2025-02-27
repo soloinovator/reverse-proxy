@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Diagnostics;
@@ -167,14 +167,10 @@ internal sealed class StreamCopyHttpContent : HttpContent
             {
                 await stream.FlushAsync(cancellationToken);
             }
-            catch (OperationCanceledException oex)
-            {
-                _tcs.TrySetResult((StreamCopyResult.Canceled, oex));
-                return;
-            }
             catch (Exception ex)
             {
-                _tcs.TrySetResult((StreamCopyResult.OutputError, ex));
+                var canceled = ex is OperationCanceledException || _activityToken.CancelledByLinkedToken;
+                _tcs.TrySetResult((canceled ? StreamCopyResult.Canceled : StreamCopyResult.OutputError, ex));
                 return;
             }
 

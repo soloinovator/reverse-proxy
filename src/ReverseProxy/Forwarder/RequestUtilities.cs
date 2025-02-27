@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Buffers;
@@ -68,7 +68,7 @@ public static class RequestUtilities
         return _headersToExclude.Contains(headerName);
     }
 
-    private static readonly FrozenSet<string> _headersToExclude = new HashSet<string>(18, StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenSet<string> _headersToExclude = new HashSet<string>(17, StringComparer.OrdinalIgnoreCase)
     {
         HeaderNames.Connection,
         HeaderNames.TransferEncoding,
@@ -87,7 +87,6 @@ public static class RequestUtilities
         HeaderNames.UpgradeInsecureRequests,
         HeaderNames.TE,
         HeaderNames.AltSvc,
-        HeaderNames.StrictTransportSecurity,
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     // Headers marked as HttpHeaderType.Content in

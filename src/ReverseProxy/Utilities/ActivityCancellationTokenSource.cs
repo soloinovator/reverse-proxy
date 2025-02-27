@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Concurrent;
@@ -10,6 +10,11 @@ namespace Yarp.ReverseProxy.Utilities;
 
 internal sealed class ActivityCancellationTokenSource : CancellationTokenSource
 {
+    // Avoid paying the cost of updating the timeout timer if doing so won't meaningfully affect
+    // the overall timeout duration (default is 100s). This is a trade-off between precision and performance.
+    // The exact value is somewhat arbitrary, but should be large enough to avoid most timer updates.
+    private const int TimeoutResolutionMs = 20;
+
     private const int MaxQueueSize = 1024;
     private static readonly ConcurrentQueue<ActivityCancellationTokenSource> _sharedSources = new();
     private static int _count;
@@ -17,11 +22,18 @@ internal sealed class ActivityCancellationTokenSource : CancellationTokenSource
     private static readonly Action<object?> _linkedTokenCancelDelegate = static s =>
     {
         var cts = (ActivityCancellationTokenSource)s!;
-        cts.CancelledByLinkedToken = true;
-        cts.Cancel(throwOnFirstException: false);
+
+        // If a cancellation was triggered by a timeout or manual call to Cancel, it's possible that this will
+        // cascade into other tokens firing. Avoid incorrectly marking CancelledByLinkedToken in such cases.
+        if (!cts.IsCancellationRequested)
+        {
+            cts.CancelledByLinkedToken = true;
+            cts.Cancel(throwOnFirstException: false);
+        }
     };
 
     private int _activityTimeoutMs;
+    private uint _lastTimeoutTicks;
     private CancellationTokenRegistration _linkedRegistration1;
     private CancellationTokenRegistration _linkedRegistration2;
 
@@ -29,9 +41,22 @@ internal sealed class ActivityCancellationTokenSource : CancellationTokenSource
 
     public bool CancelledByLinkedToken { get; private set; }
 
+    private void StartTimeout()
+    {
+        _lastTimeoutTicks = (uint)Environment.TickCount;
+        CancelAfter(_activityTimeoutMs);
+    }
+
     public void ResetTimeout()
     {
-        CancelAfter(_activityTimeoutMs);
+        var currentMs = (uint)Environment.TickCount;
+        var elapsedMs = currentMs - _lastTimeoutTicks;
+
+        if (elapsedMs > TimeoutResolutionMs)
+        {
+            _lastTimeoutTicks = currentMs;
+            CancelAfter(_activityTimeoutMs);
+        }
     }
 
     public static ActivityCancellationTokenSource Rent(TimeSpan activityTimeout, CancellationToken linkedToken1 = default, CancellationToken linkedToken2 = default)
@@ -48,7 +73,7 @@ internal sealed class ActivityCancellationTokenSource : CancellationTokenSource
         cts._activityTimeoutMs = (int)activityTimeout.TotalMilliseconds;
         cts._linkedRegistration1 = linkedToken1.UnsafeRegister(_linkedTokenCancelDelegate, cts);
         cts._linkedRegistration2 = linkedToken2.UnsafeRegister(_linkedTokenCancelDelegate, cts);
-        cts.ResetTimeout();
+        cts.StartTimeout();
 
         return cts;
     }

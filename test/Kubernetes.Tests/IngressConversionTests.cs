@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -51,8 +51,10 @@ public class IngressConversionTests
     [InlineData("multiple-ingresses-one-svc")]
     [InlineData("multiple-namespaces")]
     [InlineData("route-metadata")]
+    [InlineData("route-queryparameters")]
     [InlineData("route-headers")]
     [InlineData("route-order")]
+    [InlineData("route-methods")]
     [InlineData("missing-svc")]
     [InlineData("port-diff-name")]
     [InlineData("external-name-ingress")]

@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Linq;
 using Xunit;
@@ -135,7 +135,7 @@ public class RequestHeadersTransformExtensionsTests : TransformExtentionsTestsBa
 
     private static void ValidateRequestHeader(bool append, TransformBuilderContext builderContext)
     {
-        var requestHeaderValueTransform = Assert.Single(builderContext.RequestTransforms.OfType<RequestHeaderValueTransform>().Where(x => x.HeaderName == "name"));
+        var requestHeaderValueTransform = Assert.Single(builderContext.RequestTransforms.OfType<RequestHeaderValueTransform>(), t => t.HeaderName == "name");
         Assert.Equal("value", requestHeaderValueTransform.Value);
         Assert.Equal(append, requestHeaderValueTransform.Append);
     }

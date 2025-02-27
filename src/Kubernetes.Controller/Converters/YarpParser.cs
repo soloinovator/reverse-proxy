@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -6,6 +9,7 @@ using k8s.Models;
 using YamlDotNet.Serialization;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.Kubernetes.Controller.Caching;
+using System.Runtime.InteropServices;
 
 namespace Yarp.Kubernetes.Controller.Converters;
 
@@ -132,9 +136,11 @@ internal static class YarpParser
         {
             Match = new RouteMatch()
             {
+                Methods = ingressContext.Options.RouteMethods,
                 Hosts = host is not null ? new[] { host } : Array.Empty<string>(),
                 Path = pathMatch,
-                Headers = ingressContext.Options.RouteHeaders
+                Headers = ingressContext.Options.RouteHeaders,
+                QueryParameters = ingressContext.Options.RouteQueryParameters
             },
             ClusterId = cluster.ClusterId,
             RouteId = $"{ingressContext.Ingress.Metadata.Name}.{ingressContext.Ingress.Metadata.NamespaceProperty}:{host}{path.Path}",
@@ -142,6 +148,11 @@ internal static class YarpParser
             AuthorizationPolicy = ingressContext.Options.AuthorizationPolicy,
 #if NET7_0_OR_GREATER
             RateLimiterPolicy = ingressContext.Options.RateLimiterPolicy,
+            OutputCachePolicy = ingressContext.Options.OutputCachePolicy,
+#endif
+#if NET8_0_OR_GREATER
+            Timeout = ingressContext.Options.Timeout,
+            TimeoutPolicy = ingressContext.Options.TimeoutPolicy,
 #endif
             CorsPolicy = ingressContext.Options.CorsPolicy,
             Metadata = ingressContext.Options.RouteMetadata,
@@ -154,11 +165,7 @@ internal static class YarpParser
         var clusters = configContext.ClusterTransfers;
         // Each ingress rule path can only be for one service
         var key = UpstreamName(ingressContext.Ingress.Metadata.NamespaceProperty, ingressServiceBackend);
-        if (!clusters.ContainsKey(key))
-        {
-            clusters.Add(key, new ClusterTransfer());
-        }
-        var cluster = clusters[key];
+        var cluster = CollectionsMarshal.GetValueRefOrAddDefault(clusters, key, out _) ??= new ClusterTransfer();
         cluster.ClusterId = key;
         cluster.LoadBalancingPolicy = ingressContext.Options.LoadBalancingPolicy;
         cluster.SessionAffinity = ingressContext.Options.SessionAffinity;
@@ -193,7 +200,7 @@ internal static class YarpParser
         if (string.Equals(path.PathType, "Prefix", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(path.PathType, "ImplementationSpecific", StringComparison.OrdinalIgnoreCase))
         {
-            if (!pathMatch.EndsWith("/", StringComparison.Ordinal))
+            if (!pathMatch.EndsWith('/'))
             {
                 pathMatch += "/";
             }
@@ -230,6 +237,20 @@ internal static class YarpParser
         {
             options.RateLimiterPolicy = rateLimiterPolicy;
         }
+        if (annotations.TryGetValue("yarp.ingress.kubernetes.io/output-cache-policy", out var outputCachePolicy))
+        {
+            options.OutputCachePolicy = outputCachePolicy;
+        }
+#endif
+#if NET8_0_OR_GREATER
+        if (annotations.TryGetValue("yarp.ingress.kubernetes.io/timeout", out var timeout))
+        {
+            options.Timeout = TimeSpan.Parse(timeout, CultureInfo.InvariantCulture);
+        }
+        if (annotations.TryGetValue("yarp.ingress.kubernetes.io/timeout-policy", out var timeoutPolicy))
+        {
+            options.TimeoutPolicy = timeoutPolicy;
+        }
 #endif
         if (annotations.TryGetValue("yarp.ingress.kubernetes.io/cors-policy", out var corsPolicy))
         {
@@ -257,12 +278,21 @@ internal static class YarpParser
         }
         if (annotations.TryGetValue("yarp.ingress.kubernetes.io/route-headers", out var routeHeaders))
         {
-            // YamlDeserializer does not support IReadOnlyList<string> in RouteHeader for now, so we use RouteHeaderWapper to solve this problem.
-            options.RouteHeaders = YamlDeserializer.Deserialize<List<RouteHeaderWapper>>(routeHeaders).Select(p => p.ToRouteHeader()).ToList();
+            // YamlDeserializer does not support IReadOnlyList<string> in RouteHeader for now, so we use RouteHeaderWrapper to solve this problem.
+            options.RouteHeaders = YamlDeserializer.Deserialize<List<RouteHeaderWrapper>>(routeHeaders).Select(p => p.ToRouteHeader()).ToList();
+        }
+        if (annotations.TryGetValue("yarp.ingress.kubernetes.io/route-queryparameters", out var routeQueryParameters))
+        {
+            // YamlDeserializer does not support IReadOnlyList<string> in RouteParameters for now, so we use RouterQueryParameterWrapper to solve this problem.
+            options.RouteQueryParameters = YamlDeserializer.Deserialize<List<RouteQueryParameterWrapper>>(routeQueryParameters).Select(p => p.ToRouteQueryParameter()).ToList();
         }
         if (annotations.TryGetValue("yarp.ingress.kubernetes.io/route-order", out var routeOrder))
         {
             options.RouteOrder = int.Parse(routeOrder, CultureInfo.InvariantCulture);
+        }
+        if (annotations.TryGetValue("yarp.ingress.kubernetes.io/route-methods", out var routeMethods))
+        {
+            options.RouteMethods = YamlDeserializer.Deserialize<List<string>>(routeMethods);
         }
         // metadata to support:
         // rewrite target

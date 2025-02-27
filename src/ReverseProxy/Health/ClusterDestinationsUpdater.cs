@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Frozen;
@@ -89,7 +89,7 @@ internal sealed class ClusterDestinationsUpdater : IClusterDestinationsUpdater
                 // the semaphore's count is still 0. However, T2 could have already made some progress and didn't observe updates made
                 // by T3.
                 // By releasing the semaphore under the lock, we make sure that in the above situation T3 will proceed till the lock and
-                // its updates will be observed anyways.
+                // its updates will be observed anyway.
                 updateLock.Release();
             }
         }

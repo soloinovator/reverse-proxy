@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>$(TestTFMs)</TargetFrameworks>
     <OutputType>Library</OutputType>
     <RootNamespace>Yarp.ReverseProxy</RootNamespace>
-    <NoWarn>SYSLIB0039</NoWarn>
+    <NoWarn>$(NoWarn);SYSLIB0039;SYSLIB0057</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\..\src\ReverseProxy\ConfigurationSchema.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\TestCertificates\*.*" LinkBase="TestCertificates" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="validSelfSignedClientEkuCertificate.cer">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -15,11 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Autofac" Version="4.9.4" />
-    <PackageReference Include="Autofac.Extras.Moq" Version="4.3.0" />
-    <PackageReference Include="coverlet.collector" Version="1.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="3.1.0" />
-    <PackageReference Include="Moq" Version="4.13.1" />
+    <PackageReference Include="Autofac" Version="$(AutofacVersion)" />
+    <PackageReference Include="Autofac.Extras.Moq" Version="$(AutofacExtrasMoqVersion)" />
+    <PackageReference Include="coverlet.collector" Version="$(CoverletCollectorVersion)" />
+    <PackageReference Include="Moq" Version="$(MoqVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="$(MicrosoftAspNetCoreTestHostVersion)" />
+    <PackageReference Include="JsonSchema.Net" Version="$(JsonSchemaNetVersion)" />
   </ItemGroup>
 
   <ItemGroup>

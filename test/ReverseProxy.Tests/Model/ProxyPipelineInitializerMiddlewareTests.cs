@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -7,6 +7,9 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+#if NET8_0_OR_GREATER
+using Microsoft.AspNetCore.Http.Timeouts;
+#endif
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Moq;
@@ -14,6 +17,7 @@ using Xunit;
 using Yarp.Tests.Common;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
+using System.Diagnostics;
 
 namespace Yarp.ReverseProxy.Model.Tests;
 
@@ -120,13 +124,54 @@ public class ProxyPipelineInitializerMiddlewareTests : TestAutoMockBase
         Assert.Equal(StatusCodes.Status418ImATeapot, httpContext.Response.StatusCode);
     }
 
-    private static Endpoint CreateAspNetCoreEndpoint(RouteModel routeConfig)
+#if NET8_0_OR_GREATER
+    [Theory]
+    [InlineData(1)]
+    [InlineData(Timeout.Infinite)]
+    public async Task Invoke_MissingTimeoutMiddleware_RefuseRequest(int timeoutMs)
+    {
+        var httpClient = new HttpMessageInvoker(new Mock<HttpMessageHandler>().Object);
+        var cluster1 = new ClusterState(clusterId: "cluster1")
+        {
+            Model = new ClusterModel(new ClusterConfig(), httpClient)
+        };
+
+        var aspNetCoreEndpoints = new List<Endpoint>();
+        var routeConfig = new RouteModel(
+            config: new RouteConfig(),
+            cluster: cluster1,
+            transformer: HttpTransformer.Default);
+        var aspNetCoreEndpoint = CreateAspNetCoreEndpoint(routeConfig,
+            builder =>
+            {
+                builder.Metadata.Add(new RequestTimeoutAttribute(timeoutMs));
+            });
+        aspNetCoreEndpoints.Add(aspNetCoreEndpoint);
+        var httpContext = new DefaultHttpContext();
+        httpContext.SetEndpoint(aspNetCoreEndpoint);
+
+        var sut = Create<ProxyPipelineInitializerMiddleware>();
+
+        if (timeoutMs == Timeout.Infinite || Debugger.IsAttached)
+        {
+            // If the timeout was infinite or the debugger is attached, we shouldn't refuse the request.
+            await sut.Invoke(httpContext);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Invoke(httpContext));
+        }
+    }
+#endif
+
+    private static Endpoint CreateAspNetCoreEndpoint(RouteModel routeConfig, Action<RouteEndpointBuilder> configure = null)
     {
         var endpointBuilder = new RouteEndpointBuilder(
             requestDelegate: httpContext => Task.CompletedTask,
             routePattern: RoutePatternFactory.Parse("/"),
             order: 0);
         endpointBuilder.Metadata.Add(routeConfig);
+        configure?.Invoke(endpointBuilder);
         return endpointBuilder.Build();
     }
 }

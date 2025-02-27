@@ -1,5 +1,5 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Buffers;
@@ -10,7 +10,7 @@ using Yarp.ReverseProxy.Utilities.Tls;
 
 namespace Yarp.ReverseProxy.Sample;
 
-public class TlsFilter
+public static class TlsFilter
 {
     // This sniffs the TLS handshake and rejects requests that meat specific criteria.
     internal static async Task ProcessAsync(ConnectionContext connectionContext, Func<Task> next, ILogger logger)
@@ -68,6 +68,11 @@ public class TlsFilter
         TlsFrameHelper.TlsFrameInfo info = default;
         if (!TlsFrameHelper.TryGetFrameInfo(data, ref info))
         {
+            if (info.ParsingStatus == TlsFrameHelper.ParsingStatus.InvalidFrame)
+            {
+                logger.LogInformation("Invalid TLS frame");
+                abort = true;
+            }
             return false;
         }
 
